@@ -1,0 +1,28 @@
+[build-system]
+requires = ["uv_build>=0.9.18"]
+build-backend = "uv_build"
+
+[project]
+name = "pytest-custom-reporter"
+version = "1.0.0"
+description = "Custom test reporter for pytest with xdist support"
+readme = "README.md"
+requires-python = ">=3.11"
+
+dependencies = [
+    "pytest>=9.0.0",
+    "loguru>=0.7.0",
+    "pyyaml>=6.0",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "httpx>=0.27.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest-xdist>=3.0.0",
+    "allure-pytest>=2.15.0",
+]
+
+[project.entry-points.pytest11]
+custom_reporter = "pytest_custom_reporter.plugin"
