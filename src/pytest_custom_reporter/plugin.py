@@ -113,6 +113,21 @@ class CustomReport:
             # Extract marks from item
             marks = [mark.name for mark in item.iter_markers()] if hasattr(item, "iter_markers") else []
 
+            # Extract allure.id if present (stored in allure_label marker)
+            allure_id = None
+            try:
+                if hasattr(item, "iter_markers"):
+                    # Allure stores ID in allure_label mark with label_type="as_id"
+                    for mark in item.iter_markers("allure_label"):
+                        if mark.kwargs.get("label_type") == "as_id" and mark.args:
+                            allure_id = str(mark.args[0])
+                            break
+            except Exception as e:
+                logger.debug(
+                    f"Failed to extract allure_id: {e}",
+                    extra={"component": "CustomReport", "test_nodeid": item.nodeid}
+                )
+
             # Create test result model
             test_result = TestResultModel(
                 nodeid=item.nodeid,
@@ -121,6 +136,7 @@ class CustomReport:
                 start_time=datetime.fromtimestamp(self.start_time / 1000),
                 result=result,
                 marks=marks,
+                allure_id=allure_id,
             )
 
             # For failures and errors, include detailed information
@@ -212,6 +228,8 @@ class CustomReport:
                     test_dict["trace"] = test.stack_trace
                 if test.marks:
                     test_dict["marks"] = test.marks
+                if test.allure_id:
+                    test_dict["allure_id"] = test.allure_id
                 
                 tests_ctrf.append(test_dict)
 
