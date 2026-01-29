@@ -16,6 +16,7 @@ import yaml
 from loguru import logger
 
 from pytest_custom_reporter.models import TestResult, TestResultModel
+from pytest_custom_reporter.settings import get_settings
 
 
 class CustomReport:
@@ -23,6 +24,7 @@ class CustomReport:
 
     def __init__(self, config):
         self.config = config
+        self.settings = get_settings()
         self.start_time = int(time.time() * 1000)
         self.tests: list[TestResultModel] = []
         self.summary = {
@@ -226,7 +228,9 @@ class CustomReport:
                         "aiOptimized": True,
                         "ctrf": "1.0.0",
                         "tokenEfficient": not self.verbose,
-                        "generatedAt": int(time.time() * 1000)
+                        "generatedAt": int(time.time() * 1000),
+                        "pluginName": self.settings.name,
+                        "pluginVersion": self.settings.version
                     }
                 }
             }
@@ -281,16 +285,19 @@ class CustomReporterPlugin:
 
     def __init__(self, config):
         self.config = config
+        self.settings = get_settings()
         self.report = CustomReport(config)
-        self.report_format = config.getoption("--custom-report-format", default="json")
-        user_specified_file = config.getoption("--custom-report-file", default=None)
+        self.report_format = config.getoption("--custom-report-format", default=self.settings.report_format)
+        user_specified_file = config.getoption("--custom-report-file", default=self.settings.report_file)
         self.output_file = self._generate_output_path(user_specified_file)
-        self.remote_url = config.getoption("--custom-report-url", default=None)
+        self.remote_url = config.getoption("--custom-report-url", default=self.settings.report_url)
         self._processed_tests: set[str] = set()  # Track processed test nodeids
         logger.info(
             "Custom Reporter plugin initialized",
             extra={
                 "component": "CustomReporterPlugin",
+                "plugin_name": self.settings.name,
+                "plugin_version": self.settings.version,
                 "output_file": self.output_file,
                 "format": self.report_format,
                 "remote_url": self.remote_url
@@ -586,17 +593,18 @@ class CustomReporterPlugin:
 
 def pytest_addoption(parser):
     """Add command line options"""
+    settings = get_settings()
     group = parser.getgroup("custom-reporter")
     group.addoption(
         "--custom-report",
         action="store_true",
-        default=False,
-        help="Generate custom CTRF report"
+        default=settings.generate_report,
+        help="Generate custom report"
     )
     group.addoption(
         "--custom-report-file",
         action="store",
-        default=None,
+        default=settings.report_file,
         help="Output file for custom report (default: custom_reports/report-YYYYMMDD-HHMMSS.json). "
              "If only filename is provided, it will be placed in custom_reports/ with timestamp. "
              "Full paths are preserved as-is."
@@ -604,9 +612,15 @@ def pytest_addoption(parser):
     group.addoption(
         "--custom-report-url",
         action="store",
-        default=None,
+        default=settings.report_url,
         help="Remote server URL to send the report to via HTTP POST. "
              "Report will be sent as JSON in the request body."
+    )
+    group.addoption(
+        "--custom-report-format",
+        action="store",
+        default=settings.report_format,
+        help="Report format: json or yaml (default: json)"
     )
 
 
