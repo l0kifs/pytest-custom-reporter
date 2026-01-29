@@ -128,6 +128,18 @@ class CustomReport:
                     extra={"component": "CustomReport", "test_nodeid": item.nodeid}
                 )
 
+            # Extract test parameters (for parametrized tests)
+            params = {}
+            try:
+                if hasattr(item, "callspec") and hasattr(item.callspec, "params"):
+                    # Convert all parameter values to strings for JSON serialization
+                    params = {key: str(value) for key, value in item.callspec.params.items()}
+            except Exception as e:
+                logger.debug(
+                    f"Failed to extract params: {e}",
+                    extra={"component": "CustomReport", "test_nodeid": item.nodeid}
+                )
+
             # Create test result model
             test_result = TestResultModel(
                 nodeid=item.nodeid,
@@ -136,6 +148,7 @@ class CustomReport:
                 start_time=datetime.fromtimestamp(self.start_time / 1000),
                 result=result,
                 marks=marks,
+                params=params,
                 allure_id=allure_id,
             )
 
@@ -228,6 +241,8 @@ class CustomReport:
                     test_dict["trace"] = test.stack_trace
                 if test.marks:
                     test_dict["marks"] = test.marks
+                if test.params:
+                    test_dict["params"] = test.params
                 if test.allure_id:
                     test_dict["allure_id"] = test.allure_id
                 
